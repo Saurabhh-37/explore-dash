@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Container,
   Box,
@@ -14,6 +14,7 @@ import {
   Divider,
   Card,
   CardContent,
+  Chip,
 } from "@mui/material";
 
 // Function to get color based on trust score
@@ -24,6 +25,8 @@ const getCircularProgressColor = (trustScore) => {
 };
 
 const InfluencerDetail = () => {
+  const [statusFilter, setStatusFilter] = useState("All");
+
   // Example influencer data
   const influencerData = {
     name: "Dr. Andrew Huberman",
@@ -56,14 +59,27 @@ const InfluencerDetail = () => {
           reason: "Several studies show cognitive benefits of intermittent fasting.",
         },
       },
+      {
+        claim: "Eating late at night causes weight gain.",
+        verification_status: {
+          status: "Questionable",
+          trust_score: "50%",
+          reason: "The evidence is mixed; more research is needed to confirm this claim.",
+        },
+      },
     ],
   };
 
+  // Filter claims based on verification status
+  const filteredClaims = influencerData.claims.filter((claim) => {
+    return statusFilter === "All" || claim.verification_status.status === statusFilter;
+  });
+
   return (
     <Container>
-      <Paper sx={{ p: 3, mt: 2 }}>
+      {/* <Paper sx={{ p: 3, mt: 2 }}> */}
         {/* Profile Section */}
-        <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", mb: 3, mt: 2 }}>
           <Box>
             <Typography variant="h5">{influencerData.name}</Typography>
             <Typography variant="body2" color="textSecondary">
@@ -79,10 +95,10 @@ const InfluencerDetail = () => {
           <Box sx={{ width: "30%" }}>
             <Card>
               <CardContent>
-                <Typography variant="h6">Yearly Revenue</Typography>
                 <Typography variant="h4" color="primary">
                   ${influencerData.yearlyRevenue.toLocaleString()}
                 </Typography>
+                <Typography variant="h6">Yearly Revenue</Typography>
               </CardContent>
             </Card>
           </Box>
@@ -91,10 +107,10 @@ const InfluencerDetail = () => {
           <Box sx={{ width: "30%" }}>
             <Card>
               <CardContent>
-                <Typography variant="h6">Followers</Typography>
                 <Typography variant="h4" color="primary">
                   {influencerData.followers.toLocaleString()}
                 </Typography>
+                <Typography variant="h6">Followers</Typography>
               </CardContent>
             </Card>
           </Box>
@@ -103,10 +119,10 @@ const InfluencerDetail = () => {
           <Box sx={{ width: "30%" }}>
             <Card>
               <CardContent>
-                <Typography variant="h6">Trust Score</Typography>
                 <Typography variant="h4" color="primary">
                   {influencerData.trustScore}%
                 </Typography>
+                <Typography variant="h6">Trust Score</Typography>
               </CardContent>
             </Card>
           </Box>
@@ -114,9 +130,40 @@ const InfluencerDetail = () => {
 
         <Divider sx={{ my: 3 }} />
 
+        {/* Claims Filter Section */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Filter by Verification Status
+          </Typography>
+          <Chip
+            label="All"
+            color={statusFilter === "All" ? "primary" : "default"}
+            onClick={() => setStatusFilter("All")}
+            sx={{ mr: 1 }}
+          />
+          <Chip
+            label="Verified"
+            color={statusFilter === "Verified" ? "primary" : "default"}
+            onClick={() => setStatusFilter("Verified")}
+            sx={{ mr: 1 }}
+          />
+          <Chip
+            label="Debunked"
+            color={statusFilter === "Debunked" ? "primary" : "default"}
+            onClick={() => setStatusFilter("Debunked")}
+            sx={{ mr: 1 }}
+          />
+          <Chip
+            label="Questionable"
+            color={statusFilter === "Questionable" ? "primary" : "default"}
+            onClick={() => setStatusFilter("Questionable")}
+            sx={{ mr: 1 }}
+          />
+        </Box>
+
         {/* Claims Table */}
         <Typography variant="h6" sx={{ mb: 2 }}>
-          Claims with Verification Details
+          Claims Analysis
         </Typography>
         <TableContainer component={Paper}>
           <Table>
@@ -128,7 +175,7 @@ const InfluencerDetail = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {influencerData.claims.map((claim, index) => {
+              {filteredClaims.map((claim, index) => {
                 const trustScore = parseInt(claim.verification_status.trust_score); // Convert trust score to integer
                 return (
                   <TableRow key={index}>
@@ -167,7 +214,7 @@ const InfluencerDetail = () => {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      {/* </Paper> */}
     </Container>
   );
 };

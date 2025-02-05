@@ -19,7 +19,7 @@ const theme = createTheme({
         },
       },
   typography: {
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "Verdana, sans-serif",
   },
 });
 

@@ -12,74 +12,67 @@ import {
   Divider,
   CircularProgress,
 } from "@mui/material";
+import { db, addDoc, collection } from "../firebaseConfig";
 
 const ResearchConfig = () => {
   const [influencer, setInfluencer] = useState("");
   const [claims, setClaims] = useState([]);
   const [verified, setVerified] = useState(false);
 
-  // Mock API data (replace with actual API call)
-  const mockApiData = {
-    influencer: "Dr. Andrew Huberman",
-    verified_health_claims: [
-      {
-        claim: "Cold exposure can enhance dopamine levels.",
-        verification_status: {
-          status: "Verified",
-          trust_score: "92%",
-          reason: "Multiple studies confirm dopamine increase after cold exposure.",
+  const handleSearch = async () => {
+    if (!influencer) {
+      console.error("Influencer name is required");
+      return;
+    }
+  
+    try {
+      const response = await fetch("http://127.0.0.1:5000/fetch-health-claims", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      },
-      {
-        claim: "Drinking alkaline water prevents cancer.",
-        verification_status: {
-          status: "Debunked",
-          trust_score: "20%",
-          reason: "No scientific evidence supports this claim; research contradicts it.",
-        },
-      },
-      {
-        claim: "Intermittent fasting promotes longevity.",
-        verification_status: {
-          status: "Verified",
-          trust_score: "85%",
-          reason: "Numerous studies suggest intermittent fasting has anti-aging effects.",
-        },
-      },
-      {
-        claim: "Taking vitamin D prevents COVID-19.",
-        verification_status: {
-          status: "Questionable",
-          trust_score: "55%",
-          reason: "Some studies show vitamin D may reduce the severity of symptoms, but more research is needed.",
-        },
-      },
-      {
-        claim: "Meditation can heal chronic diseases.",
-        verification_status: {
-          status: "Verified",
-          trust_score: "78%",
-          reason: "Scientific evidence supports meditation's role in improving mental and physical health.",
-        },
-      },
-      {
-        claim: "The law of attraction can manifest physical health.",
-        verification_status: {
-          status: "Debunked",
-          trust_score: "30%",
-          reason: "No scientific evidence supports the law of attraction's ability to manifest health outcomes.",
-        },
-      },
-    ],
-  };
+        body: JSON.stringify({ influencer }),  // Sending influencer name to backend
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      console.log("Full Backend Response:", data);
+  
+      // Extracting key details
+      const extractedClaims = data.extracted_health_claims;
+      const fetchedClaims = data.fetched_claims;
+      const verifiedClaims = data.verified_health_claims.flatMap(group => 
+        group.verified_health_claims.map(claim => ({
+          influencer: group.influencer || "Unknown",
+          claim: claim.claim,
+          status: claim.verification_status.status,
+          reason: claim.verification_status.reason,
+          trust_score: claim.verification_status.trust_score
+        }))
+      );
+  
+      console.log("Verified Health Claims:", verifiedClaims);
+  
+      // Storing extracted claims in state (if needed for UI rendering)
+      setClaims(verifiedClaims);
 
-  // Step 1: Handle influencer search and display claims
-  const handleSearch = () => {
-    if (influencer) {
-      // Replace with actual API call to fetch claims for the influencer
-      setClaims(mockApiData.verified_health_claims); // Setting mock data for now
+      // Save each verified claim to Firestore
+    for (const claim of verifiedClaims) {
+      await addDoc(collection(db, "health_claims"), claim);
+      console.log("Saved to Firestore:", claim);
+    }
+
+    alert("Verification results saved to Firestore!");
+  
+    } catch (error) {
+      console.error("Error fetching data:", error);
     }
   };
+  
+  
 
   // Step 2: Handle verification button click to show detailed verification info
   const handleVerify = () => {
