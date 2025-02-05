@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Box,
@@ -15,7 +15,13 @@ import {
   Card,
   CardContent,
   Chip,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
 } from "@mui/material";
+import { getDocs, collection, doc, getDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 
 // Function to get color based on trust score
 const getCircularProgressColor = (trustScore) => {
@@ -26,9 +32,12 @@ const getCircularProgressColor = (trustScore) => {
 
 const InfluencerDetail = () => {
   const [statusFilter, setStatusFilter] = useState("All");
+  const [influencers, setInfluencers] = useState([]);
+  const [selectedInfluencer, setSelectedInfluencer] = useState("");
+  const [influencerData, setInfluencerData] = useState(null);
 
   // Example influencer data
-  const influencerData = {
+  const influencersData = {
     name: "Dr. Andrew Huberman",
     description: "Neuroscientist and professor at Stanford University.",
     trustScore: 85, // trust score (percentage)
@@ -70,8 +79,38 @@ const InfluencerDetail = () => {
     ],
   };
 
+  useEffect(() => {
+    // Fetch all influencer documents from Firestore
+    const fetchInfluencers = async () => {
+      const influencerCollection = collection(db, "VerifiedClaims");
+      const influencerSnapshot = await getDocs(influencerCollection);
+      const influencerList = influencerSnapshot.docs.map((doc) => doc.id); // Get all influencer ids
+      setInfluencers(influencerList);
+    };
+
+    fetchInfluencers();
+  }, []);
+
+  useEffect(() => {
+    // Log the value of selectedInfluencer in the useEffect hook
+    console.log("Selected Influencer in useEffect:", selectedInfluencer);
+  
+    const fetchInfluencerData = async () => {
+      if (selectedInfluencer) {
+        const docRef = doc(db, "VerifiedClaims", selectedInfluencer);
+        const docSnapshot = await getDoc(docRef);
+        if (docSnapshot.exists()) {
+          setInfluencerData(docSnapshot.data());
+        }
+      }
+    };
+  
+    fetchInfluencerData();
+  }, [selectedInfluencer]);
+  
+
   // Filter claims based on verification status
-  const filteredClaims = influencerData.claims.filter((claim) => {
+  const filteredClaims = influencersData.claims.filter((claim) => {
     return statusFilter === "All" || claim.verification_status.status === statusFilter;
   });
 
@@ -80,13 +119,39 @@ const InfluencerDetail = () => {
       {/* <Paper sx={{ p: 3, mt: 2 }}> */}
         {/* Profile Section */}
         <Box sx={{ display: "flex", alignItems: "center", mb: 3, mt: 2 }}>
-          <Box>
-            <Typography variant="h5">{influencerData.name}</Typography>
-            <Typography variant="body2" color="textSecondary">
-              {influencerData.description}
-            </Typography>
+        <FormControl fullWidth>
+  <InputLabel>Choose Influencer</InputLabel>
+  <Select
+    value={selectedInfluencer}
+    label="Choose Influencer"
+    onChange={(e) => {
+      // console.log("Selected Influencer Value:", e.target.value);  // Log selected influencer value
+      setSelectedInfluencer(e.target.value);
+    }}
+  >
+    {influencers.map((influencer) => (
+      <MenuItem key={influencer} value={influencer}>
+        {influencer}
+      </MenuItem>
+    ))}
+  </Select>
+</FormControl>
+
+      </Box>
+
+      {influencerData && (
+        <>
+        {/* Profile Section */}
+        <Box sx={{ display: "flex", alignItems: "center", mb: 3, mt: 2 }}>
+            <Box>
+              <Typography variant="h5">{selectedInfluencer}</Typography>
+              <Typography variant="body2" color="textSecondary">
+                {influencerData.description}
+              </Typography>
+            </Box>
           </Box>
-        </Box>
+        </>
+      )}
         <Divider sx={{ mb: 3 }} />
 
         {/* Revenue, Followers and Trust Score in Cards using Box */}
@@ -96,7 +161,7 @@ const InfluencerDetail = () => {
             <Card>
               <CardContent>
                 <Typography variant="h4" color="primary">
-                  ${influencerData.yearlyRevenue.toLocaleString()}
+                  ${influencersData.yearlyRevenue.toLocaleString()}
                 </Typography>
                 <Typography variant="h6">Yearly Revenue</Typography>
               </CardContent>
@@ -108,7 +173,7 @@ const InfluencerDetail = () => {
             <Card>
               <CardContent>
                 <Typography variant="h4" color="primary">
-                  {influencerData.followers.toLocaleString()}
+                  {influencersData.followers.toLocaleString()}
                 </Typography>
                 <Typography variant="h6">Followers</Typography>
               </CardContent>
@@ -120,7 +185,7 @@ const InfluencerDetail = () => {
             <Card>
               <CardContent>
                 <Typography variant="h4" color="primary">
-                  {influencerData.trustScore}%
+                  {influencersData.trustScore}%
                 </Typography>
                 <Typography variant="h6">Trust Score</Typography>
               </CardContent>

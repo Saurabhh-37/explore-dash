@@ -1,52 +1,7 @@
-import React, { useState } from "react";
-import {
-  Container,
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Box,
-  Chip,
-  Card,
-  CardContent,
-} from "@mui/material";
-
-// Sample data for the leaderboard with categories
-const leaderboardData = [
-  {
-    name: "Dr. Andrew Huberman",
-    trustScore: 85,
-    followers: 1000000,
-    claims: 5,
-    category: "Mental Health",
-  },
-  {
-    name: "Dr. Rhonda Patrick",
-    trustScore: 90,
-    followers: 800000,
-    claims: 6,
-    category: "Nutrition",
-  },
-  {
-    name: "Dr. Joe Dispenza",
-    trustScore: 75,
-    followers: 1200000,
-    claims: 8,
-    category: "Mental Health",
-  },
-  {
-    name: "Dr. David Sinclair",
-    trustScore: 95,
-    followers: 600000,
-    claims: 4,
-    category: "Medicine",
-  },
-];
+import React, { useState, useEffect } from "react";
+import { Container, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, CircularProgress, Box, Chip, Card, CardContent } from "@mui/material";
+import { db } from "../firebaseConfig"; // Make sure your Firebase setup is properly imported
+import { doc, getDoc, collection, getDocs } from "firebase/firestore"; // Firestore functions
 
 // Function to get color based on trust score
 const getCircularProgressColor = (trustScore) => {
@@ -57,6 +12,40 @@ const getCircularProgressColor = (trustScore) => {
 
 const Leaderboard = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch the influencer documents from Firestore
+        const influencersCollection = collection(db, "VerifiedClaims");
+        const influencerSnapshot = await getDocs(influencersCollection);
+        const influencerList = [];
+
+        influencerSnapshot.forEach((doc) => {
+          const influencerData = doc.data();
+          influencerList.push({
+            name: influencerData.influencer,
+            trustScore: influencerData.claimsHistory
+              ? influencerData.claimsHistory.length * 10 // Example: Trust score logic based on claims history
+              : 0,
+            followers: influencerData.followers || 0,
+            claims: influencerData.claimsHistory?.length || 0,
+            category: influencerData.category || "Unknown", // Adjust as needed
+          });
+        });
+
+        setLeaderboardData(influencerList);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data from Firestore: ", error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []); // Empty array to run only once on component mount
 
   // Filter leaderboard data based on the selected category
   const filteredData =
@@ -76,70 +65,72 @@ const Leaderboard = () => {
   };
 
   return (
-    <Container sx={{mt: 2}}>
-      {/* <Paper sx={{ p: 3, mt: 2 }}> */}
-        <Typography variant="h4" gutterBottom>
-          Leaderboard
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 3 }}>
-          List ranked by score.
-        </Typography>
+    <Container sx={{ mt: 2 }}>
+      <Typography variant="h4" gutterBottom>
+        Leaderboard
+      </Typography>
+      <Typography variant="body1" sx={{ mb: 3 }}>
+        List ranked by score.
+      </Typography>
 
-        {/* Display Cards Above Leaderboard */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            mb: 3,
-          }}
-        >
-          <Box sx={{ width: "30%" }}>
-            <Card>
-              <CardContent>
+      {/* Display Cards Above Leaderboard */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          mb: 3,
+        }}
+      >
+        <Box sx={{ width: "30%" }}>
+          <Card>
+            <CardContent>
               <Typography variant="h4" color="primary">
-                  {activeInfluencers}
-                </Typography>
-                <Typography variant="h6">Active Influencers</Typography>          
-              </CardContent>
-            </Card>
-          </Box>
-
-          <Box sx={{ width: "30%" }}>
-            <Card>
-              <CardContent>
-                <Typography variant="h4" color="primary">
-                  {totalClaims}
-                </Typography>
-                <Typography variant="h6">Claims Verified</Typography>
-              </CardContent>
-            </Card>
-          </Box>
-
-          <Box sx={{ width: "30%" }}>
-            <Card>
-              <CardContent>
-                <Typography variant="h4" color="primary">
-                  {averageTrustScore.toFixed(2)}%
-                </Typography>
-                <Typography variant="h6">Average Trust Score</Typography>
-              </CardContent>
-            </Card>
-          </Box>
+                {activeInfluencers}
+              </Typography>
+              <Typography variant="h6">Active Influencers</Typography>
+            </CardContent>
+          </Card>
         </Box>
 
-        {/* Category Filter with Chips */}
-        <Box sx={{ mb: 3 }}>
-          {["All", "Mental Health", "Nutrition", "Medicine"].map((category) => (
-            <Chip
-              key={category}
-              label={category}
-              onClick={() => handleChipClick(category)}
-              color={selectedCategory === category ? "primary" : "default"}
-              sx={{ mr: 1, mb: 1, cursor: "pointer" }}
-            />
-          ))}
+        <Box sx={{ width: "30%" }}>
+          <Card>
+            <CardContent>
+              <Typography variant="h4" color="primary">
+                {totalClaims}
+              </Typography>
+              <Typography variant="h6">Claims Verified</Typography>
+            </CardContent>
+          </Card>
         </Box>
 
+        <Box sx={{ width: "30%" }}>
+          <Card>
+            <CardContent>
+              <Typography variant="h4" color="primary">
+                {averageTrustScore.toFixed(2)}%
+              </Typography>
+              <Typography variant="h6">Average Trust Score</Typography>
+            </CardContent>
+          </Card>
+        </Box>
+      </Box>
+
+      {/* Category Filter with Chips */}
+      <Box sx={{ mb: 3 }}>
+        {["All", "Mental Health", "Nutrition", "Medicine"].map((category) => (
+          <Chip
+            key={category}
+            label={category}
+            onClick={() => handleChipClick(category)}
+            color={selectedCategory === category ? "primary" : "default"}
+            sx={{ mr: 1, mb: 1, cursor: "pointer" }}
+          />
+        ))}
+      </Box>
+
+      {loading ? (
+        <CircularProgress />
+      ) : (
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -192,7 +183,7 @@ const Leaderboard = () => {
             </TableBody>
           </Table>
         </TableContainer>
-      {/* </Paper> */}
+      )}
     </Container>
   );
 };

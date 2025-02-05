@@ -12,7 +12,8 @@ import {
   Divider,
   CircularProgress,
 } from "@mui/material";
-import { db, addDoc, collection } from "../firebaseConfig";
+import { db } from "../firebaseConfig";
+import { doc, setDoc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
 
 const ResearchConfig = () => {
   const [influencer, setInfluencer] = useState("");
@@ -26,7 +27,7 @@ const ResearchConfig = () => {
     }
   
     try {
-      const response = await fetch("http://127.0.0.1:5000/fetch-health-claims", {
+      const response = await fetch("https://influencerverifybackend.onrender.com/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -42,36 +43,50 @@ const ResearchConfig = () => {
       console.log("Full Backend Response:", data);
   
       // Extracting key details
-      const extractedClaims = data.extracted_health_claims;
-      const fetchedClaims = data.fetched_claims;
-      const verifiedClaims = data.verified_health_claims.flatMap(group => 
-        group.verified_health_claims.map(claim => ({
-          influencer: group.influencer || "Unknown",
-          claim: claim.claim,
-          status: claim.verification_status.status,
-          reason: claim.verification_status.reason,
-          trust_score: claim.verification_status.trust_score
-        }))
-      );
+      const extractedClaims = data.extracted_health_claims || [];
+      const fetchedClaims = data.fetched_claims || [];
+      const verifiedClaims = data.verified_health_claims.flatMap(group => group.verified_health_claims) || [];
   
+      console.log("Extracted Health Claims:", extractedClaims);
+      console.log("Fetched Claims (Raw):", fetchedClaims);
       console.log("Verified Health Claims:", verifiedClaims);
   
-      // Storing extracted claims in state (if needed for UI rendering)
+      // Firestore document reference
+      const docRef = doc(db, "VerifiedClaims", influencer);
+  
+      // Check if the influencer document exists
+      const docSnapshot = await getDoc(docRef);
+  
+      if (docSnapshot.exists()) {
+        // Document exists, so append to the claimsHistory array
+        await updateDoc(docRef, {
+          claimsHistory: arrayUnion({
+            verifiedClaims,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+        console.log("New data successfully appended to Firestore");
+      } else {
+        // Document does not exist, so create a new document with initial claims
+        await setDoc(docRef, {
+          influencer,
+          claimsHistory: [
+            {
+              verifiedClaims,
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        });
+        console.log("New influencer document created and data stored in Firestore");
+      }
+  
+      // Optionally, update state (if you're using React state to display the data)
       setClaims(verifiedClaims);
-
-      // Save each verified claim to Firestore
-    for (const claim of verifiedClaims) {
-      await addDoc(collection(db, "health_claims"), claim);
-      console.log("Saved to Firestore:", claim);
-    }
-
-    alert("Verification results saved to Firestore!");
   
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching or storing data:", error);
     }
   };
-  
   
 
   // Step 2: Handle verification button click to show detailed verification info
