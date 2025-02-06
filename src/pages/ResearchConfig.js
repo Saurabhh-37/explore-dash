@@ -27,7 +27,7 @@ const ResearchConfig = () => {
     }
   
     try {
-      const response = await fetch("https://influencerverifybackend.onrender.com/analyze", {
+      const response = await fetch("https://influencerverifybackend-9nhi.onrender.com/fetch-health-claims", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -202,7 +202,7 @@ const ResearchConfig = () => {
                       sx={{
                         position: "absolute",
                         top: "50%",
-                        left: "50%",
+                        left: "-10%",
                         transform: "translate(-50%, -50%)",
                         color: "#fff",
                       }}

@@ -35,13 +35,14 @@ const InfluencerDetail = () => {
   const [influencers, setInfluencers] = useState([]);
   const [selectedInfluencer, setSelectedInfluencer] = useState("");
   const [influencerData, setInfluencerData] = useState(null);
+  const [filteredClaims, setFilteredClaims] = useState([]);
 
   // Example influencer data
   const influencersData = {
     name: "Dr. Andrew Huberman",
     description: "Neuroscientist and professor at Stanford University.",
     trustScore: 85, // trust score (percentage)
-    yearlyRevenue: 500000,
+    yearlyRevenue: 50000,
     followers: 1000000,
     claims: [
       {
@@ -92,27 +93,44 @@ const InfluencerDetail = () => {
   }, []);
 
   useEffect(() => {
-    // Log the value of selectedInfluencer in the useEffect hook
-    console.log("Selected Influencer in useEffect:", selectedInfluencer);
-  
     const fetchInfluencerData = async () => {
-      if (selectedInfluencer) {
-        const docRef = doc(db, "VerifiedClaims", selectedInfluencer);
-        const docSnapshot = await getDoc(docRef);
-        if (docSnapshot.exists()) {
-          setInfluencerData(docSnapshot.data());
-        }
+      if (!selectedInfluencer) return;
+  
+      const docRef = doc(db, "VerifiedClaims", selectedInfluencer);
+      const docSnapshot = await getDoc(docRef);
+  
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data();
+        console.log("Fetched Data:", data);
+  
+        // Extracting claimsHistory -> verifiedClaims
+        const allClaims = data.claimsHistory.flatMap(history => history.verifiedClaims);
+        console.log("Extracted Claims:", allClaims);
+  
+        setFilteredClaims(allClaims);
+      } else {
+        console.log("No document found for this influencer.");
+        setFilteredClaims([]);
       }
     };
   
     fetchInfluencerData();
   }, [selectedInfluencer]);
   
+  const calculateAverageTrustScore = () => {
+    if (!filteredClaims.length) return 0;
+    const totalTrustScore = filteredClaims.reduce(
+      (sum, claim) => sum + parseInt(claim.verification_status.trust_score || 0),
+      0
+    );
+    return Math.round(totalTrustScore / filteredClaims.length);
+  };
+  
 
   // Filter claims based on verification status
-  const filteredClaims = influencersData.claims.filter((claim) => {
-    return statusFilter === "All" || claim.verification_status.status === statusFilter;
-  });
+  // const filteredClaims = influencersData.claims.filter((claim) => {
+  //   return statusFilter === "All" || claim.verification_status.status === statusFilter;
+  // });
 
   return (
     <Container>
@@ -185,7 +203,7 @@ const InfluencerDetail = () => {
             <Card>
               <CardContent>
                 <Typography variant="h4" color="primary">
-                  {influencersData.trustScore}%
+                  {calculateAverageTrustScore()}%
                 </Typography>
                 <Typography variant="h6">Trust Score</Typography>
               </CardContent>
@@ -240,43 +258,46 @@ const InfluencerDetail = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredClaims.map((claim, index) => {
-                const trustScore = parseInt(claim.verification_status.trust_score); // Convert trust score to integer
-                return (
-                  <TableRow key={index}>
-                    <TableCell>{claim.claim}</TableCell>
-                    <TableCell>{claim.verification_status.status}</TableCell>
-                    <TableCell>
-                      <Box sx={{ position: "relative", display: "inline-flex" }}>
-                        <CircularProgress
-                          variant="determinate"
-                          value={trustScore}
-                          size={30}
-                          thickness={4}
-                          sx={{
-                            ml: 2,
-                            color: getCircularProgressColor(trustScore),
-                          }}
-                        />
-                        <Typography
-                          variant="body2"
-                          component="div"
-                          sx={{
-                            position: "absolute",
-                            top: "50%",
-                            left: "50%",
-                            transform: "translate(-50%, -50%)",
-                            color: "#fff",
-                          }}
-                        >
-                          {trustScore}%
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
+  {filteredClaims
+    .filter((claim) => statusFilter === "All" || claim.verification_status.status === statusFilter)
+    .map((claim, index) => {
+      const trustScore = parseInt(claim.verification_status.trust_score);
+      return (
+        <TableRow key={index}>
+          <TableCell>{claim.claim}</TableCell>
+          <TableCell>{claim.verification_status.status}</TableCell>
+          <TableCell>
+            <Box sx={{ position: "relative", display: "inline-flex" }}>
+              <CircularProgress
+                variant="determinate"
+                value={trustScore}
+                size={30}
+                thickness={4}
+                sx={{
+                  ml: 2,
+                  color: getCircularProgressColor(trustScore),
+                }}
+              />
+              <Typography
+                variant="body2"
+                component="div"
+                sx={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "-10%",
+                  transform: "translate(-50%, -50%)",
+                  color: "#fff",
+                }}
+              >
+                {trustScore}%
+              </Typography>
+            </Box>
+          </TableCell>
+        </TableRow>
+      );
+    })}
+</TableBody>
+
           </Table>
         </TableContainer>
       {/* </Paper> */}
