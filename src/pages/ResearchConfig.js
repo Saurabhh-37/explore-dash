@@ -25,40 +25,40 @@ const ResearchConfig = () => {
       console.error("Influencer name is required");
       return;
     }
-  
+
     try {
-      const response = await fetch("https://influencerverifybackend-9nhi.onrender.com/fetch-health-claims", {
+      const response = await fetch("https://asia-south1-gen-lang-client-0991694437.cloudfunctions.net/VerifyInfluencers", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ influencer }),  // Sending influencer name to backend
+        body: JSON.stringify({ influencer }), // Sending influencer name to backend
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-  
+
       const data = await response.json();
       console.log("Full Backend Response:", data);
-  
-      // Extracting key details
+
+      // Extract key details
       const extractedClaims = data.extracted_health_claims || [];
-      const fetchedClaims = data.fetched_claims || [];
-      const verifiedClaims = data.verified_health_claims.flatMap(group => group.verified_health_claims) || [];
-  
+      const verifiedClaims = Array.isArray(data.verified_health_claims)
+        ? data.verified_health_claims.flatMap(group => group.verified_health_claims) || []
+        : [];
+
       console.log("Extracted Health Claims:", extractedClaims);
-      console.log("Fetched Claims (Raw):", fetchedClaims);
       console.log("Verified Health Claims:", verifiedClaims);
-  
+
       // Firestore document reference
       const docRef = doc(db, "VerifiedClaims", influencer);
-  
+
       // Check if the influencer document exists
       const docSnapshot = await getDoc(docRef);
-  
+
       if (docSnapshot.exists()) {
-        // Document exists, so append to the claimsHistory array
+        // Append new claims to the existing document
         await updateDoc(docRef, {
           claimsHistory: arrayUnion({
             verifiedClaims,
@@ -67,7 +67,7 @@ const ResearchConfig = () => {
         });
         console.log("New data successfully appended to Firestore");
       } else {
-        // Document does not exist, so create a new document with initial claims
+        // Create a new document for the influencer
         await setDoc(docRef, {
           influencer,
           claimsHistory: [
@@ -77,12 +77,12 @@ const ResearchConfig = () => {
             },
           ],
         });
-        console.log("New influencer document created and data stored in Firestore");
+        console.log("New influencer document created in Firestore");
       }
-  
-      // Optionally, update state (if you're using React state to display the data)
+
+      // Update state to display claims
       setClaims(verifiedClaims);
-  
+
     } catch (error) {
       console.error("Error fetching or storing data:", error);
     }
